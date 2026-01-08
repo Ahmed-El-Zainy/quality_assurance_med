@@ -55,7 +55,7 @@ class AnalyzeNoteResponse(BaseModel):
     grade: Literal["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D"] = Field(
         ..., description="Letter grade based on score"
     )
-    flags: List[QAIssue] = Field(..., min_items=3, max_items=5, description="List of 3-5 QA issues")
+    flags: List[QAIssue] = Field(..., min_length=3, max_length=5, description="List of 3-5 QA issues")
 
 
 @app.get("/")

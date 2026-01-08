@@ -5,7 +5,7 @@ Handles the analysis of clinical notes using an LLM backend.
 import json
 import os
 from typing import Dict, Any, Optional
-from llm_provider import LLMProvider, OpenAIProvider
+from llm_provider import LLMProvider, HFProvider
 
 
 class ClinicalNoteAnalyzer:
@@ -24,9 +24,9 @@ class ClinicalNoteAnalyzer:
         Initialize the analyzer.
         
         Args:
-            llm_provider: Optional LLM provider. Defaults to OpenAI if not provided.
+            llm_provider: Optional LLM provider. Defaults to HFProvider if not provided.
         """
-        self.llm_provider = llm_provider or OpenAIProvider()
+        self.llm_provider =  HFProvider()
         
     def _build_prompt(
         self,
@@ -210,3 +210,21 @@ Return ONLY valid JSON. No preamble, no explanation, just the JSON object."""
         result = self._parse_response(response)
         
         return result
+    
+    
+    
+if __name__ == "__main__":
+    import asyncio
+
+    async def test():
+        analyzer = ClinicalNoteAnalyzer()
+        sample_note = """Patient presents with complaints of lower back pain for the past 2 weeks. No history of trauma. Physical examination reveals tenderness over the lumbar region. Range of motion is limited due to pain. No neurological deficits noted. Plan includes NSAIDs and physical therapy."""
+        result = await analyzer.analyze(
+            clinical_note=sample_note,
+            note_type="Initial Evaluation",
+            date_of_service="2024-01-15",
+            date_of_injury="2024-01-14"
+        )
+        print(json.dumps(result, indent=2))
+
+    asyncio.run(test())

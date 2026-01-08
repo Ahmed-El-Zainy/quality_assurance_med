@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 import os
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types
+from openai import OpenAI
 
 
 class LLMProvider(ABC):
@@ -9,10 +10,10 @@ class LLMProvider(ABC):
     async def generate(self, prompt: str) -> str:
         """
         Generate a response from the LLM.
-        
+
         Args:
             prompt: The prompt to send to the LLM
-            
+
         Returns:
             The LLM's response as a string
         """
@@ -26,22 +27,12 @@ class OpenAIProvider(LLMProvider):
         temperature: float = 0.1,
         max_tokens: int = 2000
     ):
-        """
-        Initialize OpenAI provider.
-        
-        Args:
-            model: OpenAI model name (default: gpt-4o-mini for cost efficiency)
-            temperature: Sampling temperature (low for consistency)
-            max_tokens: Maximum response length
-        """
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        
-        # Lazy import to allow running without openai installed
         try:
             from openai import AsyncOpenAI
-            api_key = os.getenv("OPENAI_API_KEY")
+            api_key = os.environ["OPENAI_API_KEY"]
             if not api_key:
                 raise ValueError(
                     "OPENAI_API_KEY environment variable not set. "
@@ -53,14 +44,11 @@ class OpenAIProvider(LLMProvider):
                 "OpenAI library not installed. "
                 "Install it with: pip install openai"
             )
-    
+            
+            
+            
+
     async def generate(self, prompt: str) -> str:
-        """
-        Generate response using OpenAI API.
-        
-        Uses a low temperature for consistent, predictable outputs.
-        Includes response_format to encourage JSON output.
-        """
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -77,55 +65,75 @@ class OpenAIProvider(LLMProvider):
             max_tokens=self.max_tokens,
             response_format={"type": "json_object"}
         )
-        
         return response.choices[0].message.content
 
 
-class GeminiProvider: # Assuming LLMProvider is defined elsewhere
-    def __init__(
-        self,
-        model: str = "gemini-2.0-flash", # Updated to a current version
-        temperature: float = 0.1,
-        max_tokens: int = 2000
-    ):
-        self.model_name = model
+
+
+class HFProvider(LLMProvider):
+    def __init__(self,
+                 model: str = "openai/gpt-oss-120b",
+                 temperature: float = 0.1,
+                 max_tokens: int = 2000):
+        self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        
-        try:
-            api_key = os.getenv("GEMINI_API_KEY")
-            if not api_key:
-                raise ValueError(
-                    "GEMINI_API_KEY environment variable not set. "
-                    "Please set it with: export GEMINI_API_KEY=your-key-here"
-                )
-            
-            # Configure the library
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(self.model_name)
-            
-        except ImportError:
-            raise ImportError(
-                "Google Generative AI library not installed. "
-                "Install it with: pip install google-generativeai"
-            )
+        api_key = os.environ["HF_TOKEN"]
+        if not api_key:
+            raise ValueError("HF_TOKEN environment variable not set.")
+        client = OpenAI(
+            base_url="https://router.huggingface.co/v1",
+            api_key=api_key,
+        )
+        self.client = client
 
     async def generate(self, prompt: str) -> str:
-        # Note: generate_content_async is used for async operations
-        generation_config = {
-            "temperature": self.temperature,
-            "top_p": 0.95,
-            "top_k": 20,
-            "max_output_tokens": self.max_tokens,
-        }
-        
-        response = await self.model.generate_content_async(
-            prompt,
-            generation_config=generation_config
-        )
-        
-        return response.text
+        completion = self.client.chat.completions.create(
+        model="openai/gpt-oss-120b",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+    )
+        # print(f"OUT: {completion.choices[0].message.content}")
+        return completion.choices[0].message.content
 
+
+
+
+class GeminiProvider:
+    def __init__(
+        self,
+        model: str = "gemini-1.5-flash",
+        temperature: float = 0.1,
+        max_tokens: int = 500
+    ):
+        self.model_id = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+        api_key = os.environ["GEMINI_API_KEY"]
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY environment variable not set.")
+
+        # The new SDK uses a Client instance
+        self.client = genai.Client(api_key=api_key)
+
+    async def generate(self, prompt: str) -> str:
+        # The new SDK supports async natively through .aio
+        response = await self.client.aio.models.generate_content(
+            model=self.model_id,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                max_output_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=0.95,
+                top_k=20,
+            ),
+        )
+        return response.text
 
 
 class MockProvider(LLMProvider):
@@ -154,28 +162,37 @@ class MockProvider(LLMProvider):
 }"""
 
 
-
-
-
 if __name__ == "__main__":    # Simple test of providers
     import asyncio
 
     async def test_providers():
         prompt = "Generate a clinical note QA analysis for testing."
-        
+
         # openai_provider = OpenAIProvider()
         # openai_response = await openai_provider.generate(prompt)
         # print("OpenAI Response:")
         # print(openai_response)
+
+        # gemini_provider = GeminiProvider()
+        # gemini_response = await gemini_provider.generate(prompt)
+        # print("\nGemini Response:")
+        # print(gemini_response)
         
-        gemini_provider = GeminiProvider()
-        gemini_response = await gemini_provider.generate(prompt)
-        print("\nGemini Response:")
-        print(gemini_response)
         
-        mock_provider = MockProvider()
-        mock_response = await mock_provider.generate(prompt)
-        print("\nMock Response:")
-        print(mock_response)
-    
+        
+        hf_provider = HFProvider()
+        hf_response = await hf_provider.generate(prompt)
+        print("\nHF Response:")
+        print(hf_response)
+        
+        # mock_provider = MockProvider()
+        # mock_response = await mock_provider.generate(prompt)
+        # print("\nMock Response:")
+        # print(mock_response)
+
+# `asyncio.run(test_providers())` is running the `test_providers()` coroutine function using the
+# `asyncio` event loop. This function call is used to execute asynchronous code in Python 3.7 and
+# later. It runs the coroutine until it completes and returns the result. In this case, it is testing
+# the different providers by generating responses asynchronously.
     asyncio.run(test_providers())
+    # hf_provider()
