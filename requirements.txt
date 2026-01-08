@@ -5,6 +5,8 @@ pydantic==2.5.3
 
 # LLM providers (install what you need)
 openai==1.10.0
+google-generativeai
+
 # anthropic==0.18.0  # Uncomment if using Anthropic
 
 # HTTP client
