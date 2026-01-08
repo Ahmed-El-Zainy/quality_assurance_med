@@ -1,20 +1,11 @@
-"""
-LLM Provider Abstraction
-Allows swapping between different LLM providers (OpenAI, Anthropic, local models, etc.)
-"""
 from abc import ABC, abstractmethod
 from typing import Optional
 import os
+from google import genai 
+from google.genai import type
 
 
 class LLMProvider(ABC):
-    """
-    Abstract base class for LLM providers.
-    
-    This allows the system to work with different LLM backends
-    without changing the core analysis logic.
-    """
-    
     @abstractmethod
     async def generate(self, prompt: str) -> str:
         """
@@ -30,12 +21,6 @@ class LLMProvider(ABC):
 
 
 class OpenAIProvider(LLMProvider):
-    """
-    OpenAI LLM provider using the OpenAI API.
-    
-    Requires OPENAI_API_KEY environment variable.
-    """
-    
     def __init__(
         self,
         model: str = "gpt-4o-mini",
@@ -97,49 +82,49 @@ class OpenAIProvider(LLMProvider):
         return response.choices[0].message.content
 
 
-class AnthropicProvider(LLMProvider):
-    """
-    Anthropic Claude LLM provider.
-    
-    Requires ANTHROPIC_API_KEY environment variable.
-    Example of how to add alternative providers.
-    """
-    
+
+
+
+class GeminiProvider(LLMProvider):
+
     def __init__(
         self,
-        model: str = "claude-3-5-sonnet-20241022",
+        model: str = "gemini-2.5-flash",
         temperature: float = 0.1,
         max_tokens: int = 2000
     ):
-        """
-        Initialize Anthropic provider.
-        
-        Args:
-            model: Anthropic model name
-            temperature: Sampling temperature
-            max_tokens: Maximum response length
-        """
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
         
         try:
-            from anthropic import AsyncAnthropic
-            api_key = os.getenv("ANTHROPIC_API_KEY")
+            api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 raise ValueError(
-                    "ANTHROPIC_API_KEY environment variable not set. "
-                    "Please set it with: export ANTHROPIC_API_KEY=your-key-here"
+                    "GEMINI_API_KEY environment variable not set. "
+                    "Please set it with: export GEMINI_API_KEY=your-key-here"
                 )
-            self.client = AsyncAnthropic(api_key=api_key)
+                
+            self.client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+            model='gemini-2.0-flash-001',
+            contents={'text': 'Why is the sky blue?'},
+            config={
+                'temperature': 0,
+                'top_p': 0.95,
+                'top_k': 20,
+            },
+)
         except ImportError:
             raise ImportError(
-                "Anthropic library not installed. "
-                "Install it with: pip install anthropic"
+                "Google Generative AI library not installed. "
+                "Install it with: pip install google-generativeai"
             )
     
+    
+    
     async def generate(self, prompt: str) -> str:
-        """Generate response using Anthropic API."""
+        """Generate response using Google Generative AI API."""
         response = await self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
@@ -156,12 +141,6 @@ class AnthropicProvider(LLMProvider):
 
 
 class MockProvider(LLMProvider):
-    """
-    Mock provider for testing without API calls.
-    
-    Returns a fixed response for development/testing.
-    """
-    
     async def generate(self, prompt: str) -> str:
         """Return a mock response."""
         return """{
@@ -185,3 +164,30 @@ class MockProvider(LLMProvider):
     }
   ]
 }"""
+
+
+
+
+
+if __name__ == "__main__":    # Simple test of providers
+    import asyncio
+
+    async def test_providers():
+        prompt = "Generate a clinical note QA analysis for testing."
+        
+        # openai_provider = OpenAIProvider()
+        # openai_response = await openai_provider.generate(prompt)
+        # print("OpenAI Response:")
+        # print(openai_response)
+        
+        gemini_provider = GeminiProvider()
+        gemini_response = await gemini_provider.generate(prompt)
+        print("\nGemini Response:")
+        print(gemini_response)
+        
+        mock_provider = MockProvider()
+        mock_response = await mock_provider.generate(prompt)
+        print("\nMock Response:")
+        print(mock_response)
+    
+    asyncio.run(test_providers())
