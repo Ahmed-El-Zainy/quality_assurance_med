@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 import os
-from google import genai 
-from google.genai import type
+import google.generativeai as genai
 
 
 class LLMProvider(ABC):
@@ -82,18 +81,14 @@ class OpenAIProvider(LLMProvider):
         return response.choices[0].message.content
 
 
-
-
-
-class GeminiProvider(LLMProvider):
-
+class GeminiProvider: # Assuming LLMProvider is defined elsewhere
     def __init__(
         self,
-        model: str = "gemini-2.5-flash",
+        model: str = "gemini-2.0-flash", # Updated to a current version
         temperature: float = 0.1,
         max_tokens: int = 2000
     ):
-        self.model = model
+        self.model_name = model
         self.temperature = temperature
         self.max_tokens = max_tokens
         
@@ -104,40 +99,33 @@ class GeminiProvider(LLMProvider):
                     "GEMINI_API_KEY environment variable not set. "
                     "Please set it with: export GEMINI_API_KEY=your-key-here"
                 )
-                
-            self.client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-            model='gemini-2.0-flash-001',
-            contents={'text': 'Why is the sky blue?'},
-            config={
-                'temperature': 0,
-                'top_p': 0.95,
-                'top_k': 20,
-            },
-)
+            
+            # Configure the library
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel(self.model_name)
+            
         except ImportError:
             raise ImportError(
                 "Google Generative AI library not installed. "
                 "Install it with: pip install google-generativeai"
             )
-    
-    
-    
+
     async def generate(self, prompt: str) -> str:
-        """Generate response using Google Generative AI API."""
-        response = await self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+        # Note: generate_content_async is used for async operations
+        generation_config = {
+            "temperature": self.temperature,
+            "top_p": 0.95,
+            "top_k": 20,
+            "max_output_tokens": self.max_tokens,
+        }
+        
+        response = await self.model.generate_content_async(
+            prompt,
+            generation_config=generation_config
         )
         
-        return response.content[0].text
+        return response.text
+
 
 
 class MockProvider(LLMProvider):
