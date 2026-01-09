@@ -16,8 +16,20 @@ The system is designed to help improve clinical documentation quality while main
 
 ### Prerequisites
 
-* Python 3.9 or higher
-* OpenAI API key (or configure alternative LLM provider)
+* Python 3.10 or higher
+* LLM model
+  * OpenAI API key (or configure alternative LLM provider) -> needs more quatoes
+* * Gemin API - > need more quoates based on our requirements
+  * HuggingFace API with models like, i use gpt-oss-120b and was perfect
+    * [google/gemma-2-2b-it](https://huggingface.co/google/gemma-2-2b-it): A text-generation model trained to follow instructions.
+    * [Qwen/Qwen3-Coder-480B-A35B-Instruct](https://huggingface.co/Qwen/Qwen3-Coder-480B-A35B-Instruct): Powerful text generation model for coding.
+    * **[openai/gpt-oss-120b](https://huggingface.co/openai/gpt-oss-120b): Great text generation model with top-notch tool calling capabilities.**
+    * [zai-org/GLM-4.5](https://huggingface.co/zai-org/GLM-4.5): Powerful text generation model.
+    * [Qwen/Qwen3-4B-Thinking-2507](https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507): A powerful small model with reasoning capabilities.
+    * [Qwen/Qwen2.5-7B-Instruct-1M](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-1M): Strong conversational model that supports very long instructions.
+    * [Qwen/Qwen2.5-Coder-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct): Text generation model used to write code.
+    * [deepseek-ai/DeepSeek-R1](https://huggingface.co/deepseek-ai/DeepSeek-R1): Powerful reasoning based open large language model.
+
 
 ### Installation
 
@@ -26,7 +38,7 @@ The system is designed to help improve clinical documentation quality while main
    ```bash
    cd clinical-qa-api
    ```
-2. **Create a virtual environment** (recommended)
+2. **Create a virtual environment** (recommended) or use conda env
 
    ```bash
    python -m venv venv
@@ -37,19 +49,16 @@ The system is designed to help improve clinical documentation quality while main
    ```bash
    pip install -r requirements.txt
    ```
-4. **Set up your API key**
+5. **Set up your API key**
 
    ```bash
    export OPENAI_API_KEY="your-openai-api-key-here"
+   export GEMINI_API_KEY="your-gemini-api-key-here"
+   export HF_API_KEY="your-hf-api-key-here"
+
    ```
 
-   On Windows:
-
-   ```cmd
-   set OPENAI_API_KEY=your-openai-api-key-here
-   ```
-
-### Running the API
+   Running the API
 
 Start the server:
 
