@@ -1,8 +1,3 @@
-"""
-Environment configuration validator.
-Ensures all required environment variables are properly set.
-"""
-
 import os
 from typing import Dict, List
 

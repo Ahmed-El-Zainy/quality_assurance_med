@@ -152,8 +152,7 @@ class GeminiProvider(LLMProvider):
             raise
         except Exception as e:
             raise ValueError(f"Gemini API error: {str(e)}") from e
-        except Exception as e:
-            raise ValueError(f"Gemini API error: {str(e)}")
+    
 
 
 class MockProvider(LLMProvider):
