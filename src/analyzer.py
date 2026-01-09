@@ -2,6 +2,7 @@ import json
 import os
 from typing import Dict, Any, Optional
 from llm_provider import LLMProvider, HFProvider
+from logger_config import logger
 
 
 class ClinicalNoteAnalyzer:
@@ -185,21 +186,34 @@ Return ONLY valid JSON. No preamble, no explanation, just the JSON object."""
         Raises:
             ValueError: If analysis fails or response is invalid
         """
-        # Build the prompt
-        prompt = self._build_prompt(
-            clinical_note=clinical_note,
-            note_type=note_type,
-            date_of_service=date_of_service,
-            date_of_injury=date_of_injury
-        )
-        
-        # Get LLM response
-        response = await self.llm_provider.generate(prompt)
-        
-        # Parse and validate
-        result = self._parse_response(response)
-        
-        return result
+        try:
+            logger.debug(f"Starting analysis for note type: {note_type}")
+            
+            # Build the prompt
+            prompt = self._build_prompt(
+                clinical_note=clinical_note,
+                note_type=note_type,
+                date_of_service=date_of_service,
+                date_of_injury=date_of_injury
+            )
+            
+            # Get LLM response
+            logger.debug("Sending prompt to LLM provider")
+            response = await self.llm_provider.generate(prompt)
+            
+            # Parse and validate
+            logger.debug("Parsing and validating LLM response")
+            result = self._parse_response(response)
+            
+            logger.info(f"Analysis successful. Score: {result['score']}, Grade: {result['grade']}")
+            return result
+            
+        except ValueError as e:
+            logger.error(f"Validation error during analysis: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during analysis: {str(e)}", exc_info=True)
+            raise ValueError(f"Analysis failed: {str(e)}")
     
     
     
