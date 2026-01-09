@@ -1,4 +1,3 @@
-
 # Clinical Note QA API
 
 An AI-powered Quality Assurance engine that analyzes clinical notes and provides structured feedback on quality and defensibility.
@@ -351,9 +350,8 @@ All submitted code becomes the property of FirstImpact Med.
 ## Questions or Issues?
 
 This is a proof-of-concept implementation demonstrating:
-✅ Following detailed specs
-✅ Controlling LLM output
-✅ Clean, readable backend code
-✅ Clear technical decision-making
 
-For questions about implementation choices or extending functionality, refer to the "Design Decisions & Tradeoffs" section above.
+- Following detailed specs
+- Controlling LLM output
+- Clean, readable backend code
+- Clear technical decision-making
