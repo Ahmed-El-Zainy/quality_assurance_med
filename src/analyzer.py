@@ -1,7 +1,3 @@
-"""
-Clinical Note Analyzer
-Handles the analysis of clinical notes using an LLM backend.
-"""
 import json
 import os
 from typing import Dict, Any, Optional
@@ -20,12 +16,6 @@ class ClinicalNoteAnalyzer:
     """
     
     def __init__(self, llm_provider: Optional[LLMProvider] = None):
-        """
-        Initialize the analyzer.
-        
-        Args:
-            llm_provider: Optional LLM provider. Defaults to HFProvider if not provided.
-        """
         self.llm_provider =  HFProvider()
         
     def _build_prompt(
