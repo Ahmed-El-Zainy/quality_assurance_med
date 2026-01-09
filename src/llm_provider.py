@@ -133,14 +133,14 @@ class GeminiProvider(LLMProvider):
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            self.client = genai.GenerativeModel(model=self.model_id)
-        except ImportError:
+            self.client = genai.GenerativeModel(model_name=self.model_id)
+        except ImportError as e:
             raise ImportError(
                 "google-generativeai library not installed. "
                 "Install it with: pip install google-generativeai"
-            )
+            ) from e
         except Exception as e:
-            raise ValueError(f"Failed to initialize Gemini client: {str(e)}")
+            raise ValueError(f"Failed to initialize Gemini client: {str(e)}") from e
 
     async def generate(self, prompt: str) -> str:
         try:
@@ -148,8 +148,10 @@ class GeminiProvider(LLMProvider):
             if response.text is None:
                 raise ValueError("Empty response from Gemini API")
             return response.text
+        except ValueError:
+            raise
         except Exception as e:
-            raise ValueError(f"Gemini API error: {str(e)}")
+            raise ValueError(f"Gemini API error: {str(e)}") from e
         except Exception as e:
             raise ValueError(f"Gemini API error: {str(e)}")
 
