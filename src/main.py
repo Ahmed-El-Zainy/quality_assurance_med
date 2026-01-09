@@ -4,9 +4,11 @@ from pydantic import BaseModel, Field
 from typing import Literal, List
 from datetime import date
 import uvicorn
+import logging
 
 from analyzer import ClinicalNoteAnalyzer
 from config import config
+from logger_config import logger
 
 app = FastAPI(
     title="Clinical Note QA API",
@@ -24,7 +26,12 @@ app.add_middleware(
 )
 
 # Initialize analyzer with configured LLM provider
-analyzer = ClinicalNoteAnalyzer(llm_provider=config.get_llm_provider())
+try:
+    analyzer = ClinicalNoteAnalyzer(llm_provider=config.get_llm_provider())
+    logger.info(f"Initialized analyzer with LLM provider: {config.LLM_PROVIDER}")
+except Exception as e:
+    logger.error(f"Failed to initialize analyzer: {str(e)}")
+    raise
 
 
 # Request models
@@ -90,7 +97,10 @@ async def analyze_note(request: AnalyzeNoteRequest):
     try:
         # Validate input
         if not request.clinical_note.strip():
+            logger.warning("Received empty clinical note")
             raise HTTPException(status_code=400, detail="Clinical note cannot be empty")
+        
+        logger.info(f"Analyzing note of type: {request.metadata.note_type}")
         
         # Analyze the note
         result = await analyzer.analyze(
@@ -100,16 +110,24 @@ async def analyze_note(request: AnalyzeNoteRequest):
             date_of_injury=request.metadata.date_of_injury.isoformat()
         )
         
+        logger.info(f"Analysis complete. Score: {result['score']}, Grade: {result['grade']}")
         return result
         
     except HTTPException:
         raise
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
+        logger.error(f"Error analyzing note: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Error analyzing note: {str(e)}"
+            detail="An error occurred while analyzing the note. Please try again."
         )
 
 
 if __name__ == "__main__":
+    logger.info(f"Starting Clinical Note QA API on {config.HOST}:{config.PORT}")
+    logger.info(f"LLM Provider: {config.LLM_PROVIDER}")
+    logger.info(f"Environment: Development (CORS enabled for all origins)")
     uvicorn.run(app, host=config.HOST, port=config.PORT)

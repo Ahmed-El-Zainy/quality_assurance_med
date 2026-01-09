@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 import os
-import google.genai as genai
-from google.genai import types
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 
 
 class LLMProvider(ABC):
@@ -65,7 +63,10 @@ class OpenAIProvider(LLMProvider):
             max_tokens=self.max_tokens,
             response_format={"type": "json_object"}
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if content is None:
+            raise ValueError("Empty response from OpenAI API")
+        return content
 
 
 
@@ -89,51 +90,68 @@ class HFProvider(LLMProvider):
 
     async def generate(self, prompt: str) -> str:
         completion = self.client.chat.completions.create(
-        model="openai/gpt-oss-120b",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-    )
-        # print(f"OUT: {completion.choices[0].message.content}")
-        return completion.choices[0].message.content
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a clinical documentation QA specialist. Always respond with valid JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens
+        )
+        content = completion.choices[0].message.content
+        if content is None:
+            raise ValueError("Empty response from Hugging Face API")
+        return content
 
 
 
 
-class GeminiProvider:
+class GeminiProvider(LLMProvider):
     def __init__(
         self,
         model: str = "gemini-1.5-flash",
         temperature: float = 0.1,
-        max_tokens: int = 500
+        max_tokens: int = 2000
     ):
         self.model_id = model
         self.temperature = temperature
         self.max_tokens = max_tokens
 
-        api_key = os.environ["GEMINI_API_KEY"]
+        api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY environment variable not set.")
+            raise ValueError(
+                "GEMINI_API_KEY environment variable not set. "
+                "Please set it with: export GEMINI_API_KEY=your-key-here"
+            )
 
-        # The new SDK uses a Client instance
-        self.client = genai.Client(api_key=api_key)
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            self.client = genai.GenerativeModel(model=self.model_id)
+        except ImportError:
+            raise ImportError(
+                "google-generativeai library not installed. "
+                "Install it with: pip install google-generativeai"
+            )
+        except Exception as e:
+            raise ValueError(f"Failed to initialize Gemini client: {str(e)}")
 
     async def generate(self, prompt: str) -> str:
-        # The new SDK supports async natively through .aio
-        response = await self.client.aio.models.generate_content(
-            model=self.model_id,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=self.max_tokens,
-                temperature=self.temperature,
-                top_p=0.95,
-                top_k=20,
-            ),
-        )
-        return response.text
+        try:
+            response = self.client.generate_content(prompt)
+            if response.text is None:
+                raise ValueError("Empty response from Gemini API")
+            return response.text
+        except Exception as e:
+            raise ValueError(f"Gemini API error: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Gemini API error: {str(e)}")
 
 
 class MockProvider(LLMProvider):

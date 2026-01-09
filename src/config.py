@@ -8,7 +8,7 @@ class Config:
     PORT: int = int(os.getenv("PORT", "8000"))
     
     # LLM Provider Settings
-    LLM_PROVIDER: Literal["openai", "gemini", "mock", "hf"] = os.getenv("LLM_PROVIDER", "hf")  # type: ignore
+    LLM_PROVIDER: Literal["openai", "gemini", "mock", "hf"] = os.getenv("LLM_PROVIDER", "mock")  # type: ignore
     
     # OpenAI Settings
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
@@ -16,7 +16,7 @@ class Config:
     OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
     
     # Gemini Settings
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
     GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", "0.1"))
     GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", "2000"))
 
@@ -27,42 +27,46 @@ class Config:
 
     @classmethod
     def get_llm_provider(cls):
+        """Get the configured LLM provider instance."""
         from llm_provider import OpenAIProvider, MockProvider, GeminiProvider, HFProvider
-        if cls.LLM_PROVIDER == "openai":
+        from env_validator import EnvironmentValidator
+        
+        # Validate environment before creating provider
+        EnvironmentValidator.validate_llm_provider()
+        
+        provider = cls.LLM_PROVIDER.lower()
+        
+        if provider == "openai":
             return OpenAIProvider(
                 model=cls.OPENAI_MODEL,
                 temperature=cls.OPENAI_TEMPERATURE,
                 max_tokens=cls.OPENAI_MAX_TOKENS
             )
-            
-        
-        elif cls.LLM_PROVIDER == "gemini":
+        elif provider == "gemini":
             return GeminiProvider(
                 model=cls.GEMINI_MODEL,
                 temperature=cls.GEMINI_TEMPERATURE,
                 max_tokens=cls.GEMINI_MAX_TOKENS
             )
-            
-        
-        elif cls.LLM_PROVIDER == "hf":
+        elif provider == "hf":
             return HFProvider(
                 model=cls.HF_MODEL,
                 temperature=cls.HF_TEMPERATURE,
                 max_tokens=cls.HF_MAX_TOKENS
             )
-            
-        elif cls.LLM_PROVIDER == "mock":
+        elif provider == "mock":
             return MockProvider()
-        
         else:
             raise ValueError(
                 f"Unknown LLM provider: {cls.LLM_PROVIDER}. "
-                f"Must be one of: openai, gemini, mock"
+                f"Must be one of: openai, gemini, hf, mock"
             )
 
 
 config = Config()
+
 if __name__ == "__main__":
     # Global config instance
-    config = Config()
     print(f"LLM Provider: {config.LLM_PROVIDER}")
+    print(f"Host: {config.HOST}")
+    print(f"Port: {config.PORT}")
